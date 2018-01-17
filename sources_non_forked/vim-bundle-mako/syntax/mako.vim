@@ -2,8 +2,8 @@
 " Language:     Mako
 " Maintainer:   Armin Ronacher <armin.ronacher@active-4.com>
 " URL:          http://lucumr.pocoo.org/
-" Last Change:  2008 September 12
-" Version:      0.6.1
+" Last Change:  2013-05-01
+" Version:      0.6.1+
 "
 " Thanks to Brine Rue <brian@lolapps.com> who noticed a bug in the
 " delimiter handling.
@@ -19,13 +19,27 @@ elseif exists("b:current_syntax")
   finish
 endif
 
+if !exists("b:mako_outer_lang")
+  if exists("g:mako_default_outer_lang")
+    let b:mako_outer_lang = g:mako_default_outer_lang
+  else
+    let b:mako_outer_lang = "html"
+  endif
+endif
 if !exists("main_syntax")
-  let main_syntax = "html"
+  let main_syntax = b:mako_outer_lang
 endif
 
-"Source the html syntax file
-ru! syntax/html.vim
-unlet b:current_syntax
+"Source the outer syntax file
+execute "ru! syntax/" . b:mako_outer_lang . ".vim"
+if exists("b:current_syntax")
+  unlet b:current_syntax
+endif
+
+if b:mako_outer_lang == "html"
+  " tell html.vim what syntax groups should take precedence (see :help html.vim)
+  syn cluster htmlPreproc add=makoLine,makoVariable,makoTag,makoDocComment,makoDefEnd,makoText,makoDelim,makoEnd,makoComment,makoEscape
+endif
 
 "Put the python syntax file in @pythonTop
 syn include @pythonTop syntax/python.vim
@@ -54,8 +68,11 @@ syn region makoAttributeValue containedin=makoTag contained start=/"/ skip=/\\"/
 syn region makoAttributeValue containedin=MakoTag contained start=/'/ skip=/\\'/ end=/'/
 
 " Tags
-syn region makoTag matchgroup=makoDelim start="<%\(def\|call\|page\|include\|namespace\|inherit\|block\)\>" end="/\?>"
-syn match makoDelim "</%\(def\|call\|namespace\|block\)>"
+syn region makoTag matchgroup=makoDelim start="<%\(def\|call\|page\|include\|namespace\|inherit\|block\|[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\)\>" end="/\?>"
+syn match makoDelim "</%\(def\|call\|namespace\|block\|[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\)>"
+
+syn region  makoJavaScript matchgroup=makoDelim start=+<%block .*js.*>+ keepend end=+</%block>+ contains=@htmlJavaScript,htmlCssStyleComment,htmlScriptTag,@htmlPreproc,makoLine,makoBlock,makoVariable
+syn region makoCssStyle matchgroup=makoDelim start=+<%block .*css.*>+ keepend end=+</%block>+ contains=@htmlCss,htmlTag,htmlEndTag,htmlCssStyleComment,@htmlPreproc,makoLine,makoBlock,makoVariable
 
 " Newline Escapes
 syn match makoEscape /\\$/
@@ -83,4 +100,4 @@ if version >= 508 || !exists("did_mako_syn_inits")
   delc HiLink
 endif
 
-let b:current_syntax = "eruby"
+let b:current_syntax = b:mako_outer_lang
